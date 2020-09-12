@@ -90,6 +90,8 @@ west_bord <- west_bord %>%
   dplyr::filter(DISTRICT == "City of Westminster")
 ```
 
+Map {data-icon="glyphicon-flash"}
+=======================================================================
 
 Column {data-width=650}
 -----------------------------------------------------------------------
@@ -99,7 +101,7 @@ Column {data-width=650}
 ```{r}
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
-  fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
+  #fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
   addPolygons(data=west_bord, fill=TRUE, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares"))
 
 ```
