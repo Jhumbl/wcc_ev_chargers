@@ -1,38 +1,106 @@
 ---
-title: "wcc_ev_chargers"
+title: "Westminster EV Charge Points"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+    logo: ../../../../assets/logo.png
+    favicon: ../../../../assets/logo.png
+    source_code: embed
 ---
+
+---
+# CUSTOM CSS
+--- 
+<style>                     
+.navbar {
+  background-color:#2c3e50;
+  border-color: black;
+}
+
+div .chart-stage .chart-stage-flex {
+  padding-left: 0px;
+}
+
+.navbar-inverse .navbar-nav>.active>a {
+  background-color: #1a242f;
+}
+
+.navbar-inverse .navbar-nav>li>a:hover {
+  background-color: #1a242f;
+}
+
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
+  background-color: #1a242f;
+}
+
+.nav-tabs-custom > .nav-tabs > li.active {
+  border-top-color: #1a242f;
+}
+
+.awesome-marker {
+  transform: scale(0.5,0.5)
+}
+
+.storyboard-nav .sbframelist ul li.active {
+    background: #2c3e50;
+}
+
+.leaflet-control-layers-expanded {
+  color: white;
+  background: black;
+}
+
+.leaflet .legend i{
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+}
+
+.leaflet-control-attribution {
+  display: none;
+}
+
+#full_map {
+    background: #000;
+}  
+
+.legend {
+  color: white;
+  background: black;
+}
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: black;
+  color: white;
+}
+</style> 
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(leaflet)
+library(sf)
 ```
+
+```{r}
+west_bord <- sf::read_sf("../../../data/clean_data_files/westminster_boundary_files/London-wards-2018/London-wards-2018_ESRI/London_Ward_CityMerged.shp")
+west_bord <- st_transform(west_bord, 4326) 
+west_bord <- west_bord %>%
+  dplyr::filter(DISTRICT == "City of Westminster")
+```
+
 
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Chart A
-
-```{r}
-plot(c(1,2,3,5))
-```
-
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-hist(rnorm(1000, 50, 10))
-```
-
-### Chart C
+### Chart A {.no-title .no-padding}
 
 ```{r}
 leaflet() %>%
-  addTiles()
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
+  addPolygons(data=west_bord, fill=TRUE, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares"))
+
 ```
 
