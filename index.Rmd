@@ -7,75 +7,8 @@ output:
     logo: www/logo.png
     favicon: www/logo.png
     source_code: embed
+    css: styles.css
 ---
-
----
-# CUSTOM CSS
---- 
-<style>                     
-.navbar {
-  background-color:#2c3e50;
-  border-color: black;
-}
-
-div .chart-stage .chart-stage-flex {
-  padding-left: 0px;
-}
-
-.navbar-inverse .navbar-nav>.active>a {
-  background-color: #1a242f;
-}
-
-.navbar-inverse .navbar-nav>li>a:hover {
-  background-color: #1a242f;
-}
-
-.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
-  background-color: #1a242f;
-}
-
-.nav-tabs-custom > .nav-tabs > li.active {
-  border-top-color: #1a242f;
-}
-
-.awesome-marker {
-  transform: scale(0.5,0.5)
-}
-
-.storyboard-nav .sbframelist ul li.active {
-    background: #2c3e50;
-}
-
-.leaflet-control-layers-expanded {
-  color: white;
-  background: black;
-}
-
-.leaflet .legend i{
-  border-radius: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: 4px;
-}
-
-.leaflet-control-attribution {
-  display: none;
-}
-
-#full_map {
-    background: #000;
-}  
-
-.legend {
-  color: white;
-  background: black;
-}
-
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: black;
-  color: white;
-}
-</style> 
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
@@ -105,4 +38,14 @@ leaflet() %>%
   addPolygons(data=west_bord, fill=TRUE, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares"))
 
 ```
+
+About {data-icon="fa-bars"}
+=======================================================================
+
+About Page
+
+
+
+
+
 
