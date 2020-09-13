@@ -8,6 +8,7 @@ output:
     favicon: www/logo.png
     source_code: embed
     css: styles.css
+    social: [ "twitter", "facebook", "linkedin" ]
 ---
 
 ```{r setup, include=FALSE}
