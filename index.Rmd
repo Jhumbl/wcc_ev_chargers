@@ -1,12 +1,11 @@
 ---
-title: "Westminster EV Charge Points"
+title: "WCC: EV Charge Points"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
     logo: www/logo.png
     favicon: www/logo.png
-    source_code: embed
     css: styles.css
     social: [ "twitter", "facebook", "linkedin" ]
 ---
@@ -14,15 +13,38 @@ output:
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(leaflet)
+library(leaflet.extras)
+library(leaflet.extras2)
 library(sf)
+library(readr)
+library(dplyr)
+library(lubridate)
+library(DT)
+library(rvest)
+library(readxl)
+library(stringr)
+```
+
+```{r ward_bord}
+ward_bord <- sf::read_sf("../../../data/clean_data_files/westminster_boundary_files/London-wards-2018/London-wards-2018_ESRI/London_Ward_CityMerged.shp")
+ward_bord <- st_transform(ward_bord, 4326) 
+ward_bord <- ward_bord %>%
+  dplyr::filter(DISTRICT == "City of Westminster")
 ```
 
 ```{r}
-west_bord <- sf::read_sf("../../../data/clean_data_files/westminster_boundary_files/London-wards-2018/London-wards-2018_ESRI/London_Ward_CityMerged.shp")
-west_bord <- st_transform(west_bord, 4326) 
-west_bord <- west_bord %>%
-  dplyr::filter(DISTRICT == "City of Westminster")
+west_bord <- read_sf("../../../data/clean_data_files/westminster_boundary_files/westminster_border.json")
+
+cp <- read_csv("../../../data/clean_data_files/usage_data/full_usage_data.csv")
+cp <- cp %>%
+  select(Latitude, Longitude, Provider) %>%
+  unique() %>%
+  mutate(colour = ifelse(Provider=="Ubitricity", "green", "blue")) %>%
+  mutate(colour = ifelse(Provider=="ESB", "purple", colour)) %>%
+  mutate(ChargeType = ifelse(Provider=="Ubitricity", "Lamp Column", "Dedicated")) %>%
+  mutate(ChargeType = ifelse(Provider=="ESB", "Rapid", ChargeType)) 
 ```
+
 
 Map {data-icon="glyphicon-flash"}
 =======================================================================
@@ -36,14 +58,238 @@ Column {data-width=650}
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
   #fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
-  addPolygons(data=west_bord, fill=TRUE, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares"))
+  #addPolygons(data=ward_bord, fill=F, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 0.2, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares")) %>%
+  addPolygons(data=west_bord, fill=F, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black") %>%
+  addCircles(data=cp, weight=0, radius=10, fillOpacity = 1, fillColor = ~colour, group=~ChargeType, label=~Provider) %>%
+  addReachability(apikey = "5b3ce3597851110001cf62484c75d3ed4e8f4fab81992f9f4d2b83e6",
+                  options = reachabilityOptions(styleFn = list(fillOpacity=0.1, weight=1, fillColor="red"),
+                                                expandButtonContent='',
+                                                expandButtonStyleClass= 'reachability-control-expand-button fa fa-bullseye',
+                                                drawButtonContent= '',
+                                                drawButtonStyleClass= 'fa fa-pencil fa-2x',
+                                                deleteButtonContent= '',
+                                                deleteButtonStyleClass= 'fa fa-trash fa-2x',
+                                                distanceButtonContent = '',
+                                                distanceButtonStyleClass= 'fa fa-road fa-2x',
+                                                timeButtonContent= '',
+                                                timeButtonStyleClass= 'fa fa-clock-o fa-2x',
+                                                travelModeButton1Content= '',
+                                                travelModeButton1StyleClass= 'fa fa-car fa-2x',
+                                                travelModeButton2Content= '',
+                                                travelModeButton2StyleClass= 'fa fa-bicycle fa-2x',
+                                                travelModeButton3Content= '',
+                                                travelModeButton3StyleClass= 'fa fa-walking fa-2x',
+                                                travelModeButton4Content= '',
+                                                travelModeButton4StyleClass= 'fa fa-wheelchair-alt fa-2x',
+                                                #rangeControlTime = c(3,5,7,10,15,20,30),
+                                                markerFn = JS("function(latLng, travelMode, rangeType) {
+                return L.circleMarker(latLng, { radius: 2, weight: 1, color: 'black', fillColor: 'black', fillOpacity: 1 });
+            }")
+                                                )) %>%
+  addLayersControl(overlayGroups = c("Lamp Column", "Dedicated", "Rapid")) %>%
+  addSearchOSM() %>%
+  addScaleBar(position="bottomleft")
 
 ```
 
-About {data-icon="fa-bars"}
+
+```{r}
+wards_polygon <- read_sf("../../../data/clean_data_files/westminster_boundary_files/London-wards-2018/London-wards-2018_ESRI/London_Ward.shp")
+wards_polygon <- wards_polygon %>% dplyr::filter(DISTRICT == "City of Westminster") %>% st_transform(4326)
+ward_names <- sort(wards_polygon$NAME)
+```
+
+
+```{r}
+lccp <- read.csv("../../../data/clean_data_files/lamp_columns/lccp.csv") 
+lccp <- lccp %>% dplyr::filter(easting > 200000)
+lccp <- st_as_sf(lccp, coords = c("easting", "northing"), crs = "epsg:27700") %>% st_transform(4326)
+
+dedicated <- read.csv("../../../data/clean_data_files/usage_data/full_usage_dedicated.csv")
+dedicated <- dedicated %>%
+  dplyr::select(LocationName, NoBays,Latitude,Longitude, Provider) %>%
+  distinct()
+dedicated$labs <- sapply(seq(nrow(dedicated)), function(i) {
+    paste0( '<p><strong>Location: </strong>', 
+            dedicated[i, "LocationName"],'</p><p><strong>Number of Bays: </strong>', 
+            dedicated[i, "NoBays"],'</p><p><strong>Provider: </strong>',
+            dedicated[i, "Provider"],'</p>') 
+})
+dedicated <- st_as_sf(dedicated, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
+
+rapid_roll_out <- read.csv("../../../data/clean_data_files/usage_data/rapid_roll_out_locations.csv")
+rapid_roll_out <- st_as_sf(rapid_roll_out, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
+
+future_lccp <- read_excel("../../../analysis_requests/2020:08:18_SiemensDesktopReviewProgress/2020 - 09 - 15 - LCCP Proposed installation Listing - Complete.xlsx")
+future_lccp <- future_lccp %>% dplyr::filter(`WCC Comments` == "Progress to next phase of site survey")
+future_lccp <- st_as_sf(future_lccp, coords = c("easting", "northing"), crs = 27700, remove=FALSE) %>% st_transform(4326) 
+
+requests_ward <- read.csv("../../../data/clean_data_files/requests/ward_summary.csv")
+
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 1){
+  colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px")
+  labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px;margin-top: 4px;line-height: ", sizes, "px;'>", labels, "</div>")
+
+  return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity))
+}
+
+plot_map <- function(ward){
+  ward_polygon <- wards_polygon %>% dplyr::filter(NAME %in% ward) 
+  
+  lccp_ward <- st_join(lccp, wards_polygon, join=st_within) %>%
+    dplyr::filter(NAME %in% ward) %>%
+    mutate(lon = purrr::map_dbl(geometry, function(x) x[1])) %>%
+    mutate(lat = purrr::map_dbl(geometry, function(x) x[2]))
+  lccp_ward[nrow(lccp_ward)+1,] <- NA
+    
+  # Dedicated Bays
+  dedicated_ward <- st_join(dedicated, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
+    dplyr::filter(NAME %in% ward)
+  dedicated_ward[nrow(dedicated_ward)+1,] <- NA
+  
+  # Rapids Roll Out
+  rapid_roll_out_ward <- st_join(rapid_roll_out, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
+    dplyr::filter(NAME %in% ward)
+  round2 <- rapid_roll_out_ward %>% dplyr::filter(Round==2)
+  round2[nrow(round2)+1,] <- NA
+  round3 <- rapid_roll_out_ward %>% dplyr::filter(Round==3)
+  round3[nrow(round3)+1,] <- NA
+  
+  # Future LCCP
+  future_lccp_ward <- st_join(future_lccp, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
+    dplyr::filter(NAME %in% ward) %>%
+    mutate(lon = purrr::map_dbl(geometry, function(x) x[1])) %>%
+    mutate(lat = purrr::map_dbl(geometry, function(x) x[2]))
+  
+  future_lccp_ward[nrow(future_lccp_ward)+1,] <- NA
+  
+  # Requests
+  requests_ward <- requests_ward %>% filter(NAME == ward) %>% pull(n)
+  
+  lccp_ward %>%
+    leaflet() %>%
+    addProviderTiles(providers$CartoDB.Positron) %>%
+    addPolygons(data=ward_polygon, fillOpacity = 0, weight = 1, color = "black", opacity = 1) %>%
+    addCircles(lat=~lat, lng = ~lon, stroke = FALSE, fillColor = "blue", fillOpacity = 1, label=~str_to_title(site_name), radius = 8, group = "Lamp Column Charge Points") %>%
+    addCircles(data=dedicated_ward, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "red", fillOpacity = 1, label = ~LocationName, radius = 15, group = "Dedicated Charge Point Bays", popup=~labs) %>%
+    addCircles(data=future_lccp_ward, lng=~lon, lat=~lat, stroke = FALSE, fillColor = "orange", fillOpacity = 1, label = ~str_to_title(site_name), radius = 8, group = "2020 Roll Out - Lamp Column Charge Points") %>%
+    addCircles(data=round2, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 2") %>%
+    addCircles(data=round3, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 3") %>%
+    addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", sum(!is.na(lccp_ward$site_code))), 
+                                                 paste("Dedicated Charge Point Bays:", sum(dedicated_ward$NoBays, na.rm = TRUE)), 
+                                                 paste("Requests:", requests_ward),
+                                                 paste("Lamp Columns in 2020 Roll Out:", sum(!is.na(future_lccp_ward$site_code))),
+                                                 paste("Planned Rapid Installations: Round 2:", nrow(rapid_roll_out_ward%>%dplyr::filter(Round==2))),
+                                                 paste("Planned Rapid Installations: Round 3:", nrow(rapid_roll_out_ward%>%dplyr::filter(Round==3)))), values="d", colors = rep("black", 6), title="Number of:") %>%
+    addLegendCustom(colors = c("blue", "red", "orange", "cyan"), labels = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points (Subject to Survey)", "Rapid Installations (Subject to Survey)"), sizes = c(15, 20, 15, 20)) %>%
+    addLayersControl(overlayGroups = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points", "Rapid Installations - Round 2", "Rapid Installations - Round 3"),
+      position="bottomleft", options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE))
+      
+}
+
+
+```
+
+
+```{r}
+
+out <- lapply(seq_along(ward_names), function(i) {
+
+  a1 <- knitr::knit_expand(text = sprintf("\n%s {data-navmenu=\"Wards\" data-icon=\"fa-bars\"}", ward_names[[i]])) # tab header, auto extracts names of `hcs`
+  a2 <- knitr::knit_expand(text = sprintf("\n=====================================\n"))
+  a3 <- knitr::knit_expand(text = sprintf("\n### %s {.no-padding}\n", ward_names[[i]]))
+  a4 <- knitr::knit_expand(text = "\n```{r}") # start r chunk
+  a5 <- knitr::knit_expand(text = sprintf("\nplot_map(\"%s\")\n", ward_names[[i]])) # extract graphs by "writing" out `hcs[[1]]`, `hcs[[2]]` etc. to be rendered later
+  a6 <- knitr::knit_expand(text = "\n```\n") # end r chunk
+
+  paste(a1, a2, a3, a4, a5, a6, collapse = '\n') # collapse together all lines with newline separator
+
+})
+cat("\n")
+cat("\n")
+```
+
+`r paste(knitr::knit(text = paste(out, collapse = '\n')))`
+
+DfT
 =======================================================================
 
-About Page
+
+Inputs {.sidebar}
+-------------------------------------
+
+All data and visualisations on this page were compiled by the DfT and can found on their website here: http://maps.dft.gov.uk/ev-charging-map/ 
+
+Column {data-width=600}
+-------------------------------------
+
+### Datatable {data-width=300 .no-title}
+
+```{r}
+website <- read_html("http://maps.dft.gov.uk/ev-charging-map/")
+tab <- website %>%
+    html_nodes(css = "table") %>%
+    .[[1]] %>%
+    html_table()
+
+boroughs <- read_sf("../../../data/clean_data_files/westminster_boundary_files/Local_Authority_Districts__December_2019__Boundaries_UK_BFE-shp/Local_Authority_Districts__December_2019__Boundaries_UK_BFE.shp")
+
+boroughs <- boroughs %>% st_simplify(dTolerance = 500) %>% st_transform(4326)
+
+boroughs <- boroughs %>%
+  dplyr::left_join(tab, by=c("LAD19CD" = "ONS code")) %>%
+  select(LAD19CD, `Local Authority`, `Total public charging devices`, `Total public rapid charging devices`, `Charging devices per 100,000 population`)
+
+buckinghamshire <- boroughs %>% filter(is.na(`Local Authority`)) %>% st_union() 
+buckinghamshire <- st_multipolygon(lapply(buckinghamshire, function(x) x[1])) %>% st_cast("POLYGON") %>% st_sfc()
+buckinghamshire <- data.frame(a=c("E06000060"), b=c("Buckinghamshire"), c=c(135), d=c(22), e=c(25), f=c(buckinghamshire))
+colnames(buckinghamshire) <- colnames(boroughs)
+
+boroughs$`Total public charging devices` <- as.integer(boroughs$`Total public charging devices`)
+boroughs$`Total public rapid charging devices` <- as.integer(boroughs$`Total public rapid charging devices`)
+boroughs$`Charging devices per 100,000 population` <- as.integer(boroughs$`Charging devices per 100,000 population`)
+
+boroughs <- bind_rows(boroughs, buckinghamshire) %>%
+  dplyr::filter(!is.na(`Local Authority`))
+
+DT::datatable(boroughs %>% data.frame(check.names = F) %>% select(-geometry), options = list(pageLength=nrow(boroughs), info = FALSE, dom="ft"))
+```
+
+Column {data-width=600}
+-------------------------------------
+
+### Datatable {data-width=700 .no-padding .no-title}
+
+```{r}
+
+
+binpal1 <- colorQuantile("YlGnBu", boroughs$`Total public charging devices`, 5)
+binpal2 <- colorQuantile("YlGnBu", boroughs$`Total public rapid charging devices`, 5)
+binpal3 <- colorQuantile("YlGnBu", boroughs$`Charging devices per 100,000 population`, 5)
+
+boroughs %>%
+  leaflet() %>% 
+  setView(lat= 54.563652,lng= -5.067734, zoom=6) %>%
+  addProviderTiles(providers$Wikimedia) %>% 
+  addPolygons(weight=1, color = "white", fillOpacity=0.8, fillColor = ~binpal1(`Total public charging devices`), group="Total CP", popup=~`Local Authority`) %>%
+  addPolygons(weight=1, color = "white", fillOpacity=0.8, fillColor = ~binpal2(`Total public rapid charging devices`), group="Total Rapid CP") %>%
+  addPolygons(weight=1, color = "white", fillOpacity=0.8, fillColor = ~binpal3(`Charging devices per 100,000 population`), group="Total per Capita") %>%
+  addLayersControl(baseGroups=c("Total CP", "Total Rapid CP", "Total per Capita"))
+
+```
+
+
+About {data-icon="fa-bars"}
+===================================== 
+
+#### Ward Reports 
+
+* **Author:** Jack Humble
+* **Date Created:** 2020-09-23
+* **Date Updated:** `r today()`
+* **Email:** jhumble@westminster.gov.uk
+
+This report shows the current and planned EV charge points in Westminster.
 
 
 

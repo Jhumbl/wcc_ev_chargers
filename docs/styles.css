@@ -31,10 +31,6 @@ div .chart-stage .chart-stage-flex {
     background: #2c3e50;
 }
 
-.leaflet-control-layers-expanded {
-  color: white;
-  background: black;
-}
 
 .leaflet .legend i{
   border-radius: 50%;
@@ -51,12 +47,7 @@ div .chart-stage .chart-stage-flex {
     background: #000;
 }  
 
-.legend {
-  color: white;
-  background: black;
-}
 
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: black;
-  color: white;
+.section.sidebar {
+    background-color: rgb(255 255 255);
 }
