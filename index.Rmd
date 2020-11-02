@@ -23,6 +23,7 @@ library(DT)
 library(rvest)
 library(readxl)
 library(stringr)
+library(tidyr)
 ```
 
 ```{r ward_bord}
@@ -36,9 +37,23 @@ ward_bord <- ward_bord %>%
 west_bord <- read_sf("../../../data/clean_data_files/westminster_boundary_files/westminster_border.json")
 
 cp <- read_csv("../../../data/clean_data_files/usage_data/full_usage_data.csv")
+ubi <- read_csv("../../../data/clean_data_files/lamp_columns/lccp.csv")
+ubi <- ubi %>% 
+  dplyr::select(easting, northing) %>% 
+  dplyr::filter(easting>200000) %>%
+  mutate(Provider="Ubitricity") %>%
+  st_as_sf(coords=c("easting", "northing"), crs=27700, remove=FALSE) %>% 
+  st_transform(4326) %>%
+  extract(geometry, into = c('Longitude', 'Latitude'), '\\((.*),(.*)\\)', conv = T) %>%
+  as.data.frame() %>%
+  #dplyr::rename("Latitude"="easting", "Longitude"="northing") %>%
+  dplyr::select(Latitude, Longitude, Provider)
+
 cp <- cp %>%
   select(Latitude, Longitude, Provider) %>%
   unique() %>%
+  dplyr::filter(Provider!="Ubitricity") %>%
+  bind_rows(ubi) %>%
   mutate(colour = ifelse(Provider=="Ubitricity", "green", "blue")) %>%
   mutate(colour = ifelse(Provider=="ESB", "purple", colour)) %>%
   mutate(ChargeType = ifelse(Provider=="Ubitricity", "Lamp Column", "Dedicated")) %>%
@@ -120,9 +135,19 @@ dedicated <- st_as_sf(dedicated, coords = c("Longitude", "Latitude"), crs = "eps
 rapid_roll_out <- read.csv("../../../data/clean_data_files/usage_data/rapid_roll_out_locations.csv")
 rapid_roll_out <- st_as_sf(rapid_roll_out, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
 
-future_lccp <- read_excel("../../../analysis_requests/2020:08:18_SiemensDesktopReviewProgress/2020 - 09 - 15 - LCCP Proposed installation Listing - Complete.xlsx")
-future_lccp <- future_lccp %>% dplyr::filter(`WCC Comments` == "Progress to next phase of site survey")
-future_lccp <- st_as_sf(future_lccp, coords = c("easting", "northing"), crs = 27700, remove=FALSE) %>% st_transform(4326) 
+#future_lccp <- read_excel("../../../analysis_requests/2020:08:18_SiemensDesktopReviewProgress/2020 - 09 - 15 - #LCCP Proposed installation Listing - Complete.xlsx")
+#future_lccp <- future_lccp %>% dplyr::filter(`WCC Comments` == "Progress to next phase of site survey")
+#future_lccp <- st_as_sf(future_lccp, coords = c("easting", "northing"), crs = 27700, remove=FALSE) %>% #st_transform(4326) 
+
+future_lccp <- read_csv("/Users/jackhumble/Documents/WestminsterPosition/organised/analysis_requests/2020:08:18_SiemensDesktopReviewProgress/confirmed_rollout.csv")
+future_lccp <- future_lccp %>%
+  dplyr::filter(!is.na(easting)) %>%
+  st_as_sf(coords=c("easting", "northing"), crs=27700) %>%
+  st_transform(4326) %>%
+  dplyr::select(Address)
+  
+  
+  
 
 requests_ward <- read.csv("../../../data/clean_data_files/requests/ward_summary.csv")
 
@@ -172,7 +197,7 @@ plot_map <- function(ward){
     addPolygons(data=ward_polygon, fillOpacity = 0, weight = 1, color = "black", opacity = 1) %>%
     addCircles(lat=~lat, lng = ~lon, stroke = FALSE, fillColor = "blue", fillOpacity = 1, label=~str_to_title(site_name), radius = 8, group = "Lamp Column Charge Points") %>%
     addCircles(data=dedicated_ward, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "red", fillOpacity = 1, label = ~LocationName, radius = 15, group = "Dedicated Charge Point Bays", popup=~labs) %>%
-    addCircles(data=future_lccp_ward, lng=~lon, lat=~lat, stroke = FALSE, fillColor = "orange", fillOpacity = 1, label = ~str_to_title(site_name), radius = 8, group = "2020 Roll Out - Lamp Column Charge Points") %>%
+    addCircles(data=future_lccp_ward, lng=~lon, lat=~lat, stroke = FALSE, fillColor = "orange", fillOpacity = 1, label = ~str_to_title(Address), radius = 8, group = "2020 Roll Out - Lamp Column Charge Points") %>%
     addCircles(data=round2, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 2") %>%
     addCircles(data=round3, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 3") %>%
     addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", sum(!is.na(lccp_ward$site_code))), 
@@ -211,9 +236,8 @@ cat("\n")
 
 `r paste(knitr::knit(text = paste(out, collapse = '\n')))`
 
-DfT
+Department for Transport {data-navmenu="Open Data" data-icon="fa-bars"}
 =======================================================================
-
 
 Inputs {.sidebar}
 -------------------------------------

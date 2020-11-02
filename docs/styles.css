@@ -51,3 +51,7 @@ div .chart-stage .chart-stage-flex {
 .section.sidebar {
     background-color: rgb(255 255 255);
 }
+
+.openchargemapiframe {
+  height:100%;
+}
