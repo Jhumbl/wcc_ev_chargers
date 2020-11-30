@@ -55,3 +55,24 @@ div .chart-stage .chart-stage-flex {
 .openchargemapiframe {
   height:100%;
 }
+
+.leaflet-popup-content {
+  margin: 8px 8px 16px;
+  line-height: 0.8;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  display: none;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 6px;
+}
+
+body hr {
+  margin: 0px;
+}
+
+.leaflet-popup-content p {
+  margin: 18px 0px 7px 0px;
+}
+
