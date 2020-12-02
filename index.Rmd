@@ -23,132 +23,68 @@ library(rvest)
 library(readxl)
 library(stringr)
 library(tidyr)
+library(crosstalk)
 ```
 
-```{r ward_bord}
-ward_bord <- sf::read_sf("../../../data/clean_data_files/westminster_boundary_files/London-wards-2018/London-wards-2018_ESRI/London_Ward_CityMerged.shp")
-ward_bord <- st_transform(ward_bord, 4326) 
-ward_bord <- ward_bord %>%
-  dplyr::filter(DISTRICT == "City of Westminster")
-```
 
 ```{r}
-west_bord <- read_sf("../../../data/clean_data_files/westminster_boundary_files/westminster_border.json")
+source("../concat_data.R")
+west_bord=read_sf("../../../data/clean_data_files/westminster_boundary_files/westminster_border.json")
 
-cp <- read_csv("../../../data/clean_data_files/usage_data/full_usage_data.csv")
+# full_points %>%
+#   bind_cols(as_tibble(st_coordinates(full_points))) %>% rename("lon"="X", "lat"="Y") %>% 
+#   as.data.frame() %>%
+#   select(-geometry)
 
-ubi <- read_csv("../../../data/clean_data_files/charger_locations/master_nov_2020.csv")
-
-#ubi <- read_csv("../../../data/clean_data_files/lamp_columns/lccp.csv")
-ubi <- ubi %>% 
-  dplyr::filter(`No of Charge points` != 0) %>%
-  dplyr::filter(evmanufacturer=="Ubitricity") %>%
-  st_as_sf(coords=c("easting", "northing"), crs=27700, remove=FALSE) %>% 
-  st_transform(4326) %>%
-  extract(geometry, into = c('Longitude', 'Latitude'), '\\((.*),(.*)\\)', conv = T) %>%
-  as.data.frame() %>%
-  select(-geometry) %>%
-  mutate(colour = "green") %>%
-  mutate(ChargeType = "Lamp Column") %>%
-  dplyr::filter(Longitude > -4)
-
-ubi_2020_a <- read_excel("../../../data/raw_data_files/charger_locations/2020 - 11 - 20 WestminterInstallationPlanner 0.3 KC Vlookup.xlsm", sheet="Site Status")
-ubi_2020_b <- read_excel("../../../data/raw_data_files/charger_locations/2020 - 11 - 20 WestminterInstallationPlanner 0.3 KC Vlookup.xlsm", sheet="AllSurveys")
-
-ubi_2020_b <- ubi_2020_b %>%
-  select(QRCode, Latitude, Longitude)
-
-ubi_2020_installed <- ubi_2020_a %>%
-  dplyr::filter(Status=="Installed") %>%
-  select(`QRCode`, Address, `Serial Number`) %>%
-  left_join(ubi_2020_b, by=c("QRCode" = "QRCode")) %>%
-  mutate(Provider = "Ubitricity") %>%
-  mutate(colour = "green") %>%
-  mutate(ChargeType = "Lamp Column") %>%
-  mutate(`InstallDate` = "2020-11-01 00:00:00") %>%
-  mutate(NoBays = 1)
-
-ubi_2020_uninstalled <- ubi_2020_a %>%
-  dplyr::filter(Status!="Installed") %>%
-  dplyr::filter(!is.na(QRCode)) %>%
-  select(`QRCode`, Address, `Serial Number`) %>%
-  left_join(ubi_2020_b, by=c("QRCode" = "QRCode")) %>%
-  mutate(Provider = "Ubitricity") %>%
-  mutate(colour = "green") %>%
-  mutate(ChargeType = "Lamp Column") %>%
-  mutate(`InstallDate` = "2021-01-01 00:00:00") %>%
-  mutate(NoBays = 1)
-
-cp <- cp %>%
-  select(LocationName, Latitude, Longitude, Provider, NoBays) %>%
-  unique() %>%
-  dplyr::filter(Provider!="Ubitricity") %>%
-  #bind_rows(ubi) %>%
-  mutate(colour = ifelse(Provider=="Ubitricity", "green", "blue")) %>%
-  mutate(colour = ifelse(Provider=="ESB", "purple", colour)) %>%
-  mutate(ChargeType = ifelse(Provider=="Ubitricity", "Lamp Column", "Dedicated")) %>%
-  mutate(ChargeType = ifelse(Provider=="ESB", "Rapid", ChargeType)) 
+sd <- SharedData$new(full_points)
 ```
-
-```{r}
-column_names <- c("ChargepointID", "Provider", "InstallDate", "Latitude", "Longitude", "NoBays")
-
-# Installed LCCP
-ubi <- ubi %>% select( "Chargepoint ID", "evmanufacturer", "Install Date", "Latitude", "Longitude", "No of Bays")
-colnames(ubi) <- column_names
-ubi_2020_installed <- ubi_2020_installed %>% select("Serial Number", "Provider", "InstallDate", "Latitude", "Longitude", "NoBays")
-colnames(ubi_2020_installed) <- column_names
-
-lccp <- bind_rows(ubi, ubi_2020_installed)
-
-# 2020 Roll Out LCCP
-future_lccp <- ubi_2020_uninstalled %>% select("Serial Number", "Provider", "InstallDate", "Latitude", "Longitude", "NoBays")
-colnames(future_lccp) <- column_names
-
-# Dedicated Fast Points
-
-cp <- cp
-
-# Rapids
-```
-
-```{r}
-# LABELS
-# Future LCCP
-
-future_lccp$labs <- sapply(seq(nrow(future_lccp)), function(i) {
-  paste0( '<p><strong>Installing By: </strong>2021-04-01</p><p><strong>Provider: </strong>', 
-          future_lccp[i, "Provider"], '</p><p><strong>No of Bays: </strong>', 
-          future_lccp[i, "NoBays"],'</p>') 
-})
-
-# LCCP
-
-lccp$labs <- sapply(seq(nrow(lccp)), function(i) {
-  paste0( '<p><strong>ID: </strong>', lccp[i, "ChargepointID"], '</p><p><strong>Provider: </strong>', 
-          lccp[i, "Provider"], '</p><p><strong>No of Bays: </strong>', 
-          lccp[i, "NoBays"],'</p>') 
-})
-
-# CP
-
-cp$labs <- sapply(seq(nrow(cp)), function(i) {
-  paste0( '<p><strong>', cp[i, "LocationName"], '</strong></p><hr></hr><p><strong>Provider: </strong>', 
-          cp[i, "Provider"], '</p><p><strong>No of Bays: </strong>', 
-          cp[i, "NoBays"],'</p>') 
-})
-
-```
-
-
 
 Map {data-icon="glyphicon-flash"}
 =======================================================================
+
+Inputs {.sidebar}
+-------------------------------------
+
+#### Filters
+
+```{r}
+filter_select("prov", "Providers", sd, ~Provider)
+filter_checkbox("status", "Status", sd, ~Status)
+filter_checkbox("bayType", "Bay Type", sd, ~IsDedicated)
+filter_select("speed", "Speed", sd, ~Speed)
+filter_slider("bays", "Number of Bays", sd, ~NoBays)
+```
+
+<div style="color:#1a242f">
+<details>
+  <summary>Additional Options</summary>
+```{r}
+filter_select("carclub", "Car Club", sd, c("To be added..."))
+filter_select("public", "Restrictions", sd, c("To be added..."))
+```
+</details>
+</div>
 
 Column {data-width=650}
 -----------------------------------------------------------------------
 
 ### Chart A {.no-title .no-padding}
+
+
+```{r}
+# Totals and Summary Statistics
+# Installs
+
+lccp_pending <- nrow(dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Pending Installation"))
+lccp_existing <- nrow(dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Installed"))
+
+rapid_pending <- nrow(dplyr::filter(full_points, Provider=="ESB" & Status == "Pending Installation"))
+rapid_existing <- nrow(dplyr::filter(full_points, Provider=="ESB" & Status == "Installed"))
+
+ded_pending <- nrow(dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Pending Installation"))
+ded_existing <- nrow(dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Installed"))
+
+```
 
 ```{r}
 addLegendCustom <- function(map, colors, labels, sizes, opacity = 1){
@@ -160,12 +96,12 @@ addLegendCustom <- function(map, colors, labels, sizes, opacity = 1){
 
 leaflet() %>%
   addProviderTiles(providers$CartoDB.Positron) %>%
-  #fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
+    fitBounds(-0.18, 51.495, -0.13, 51.528) %>%
   #addPolygons(data=ward_bord, fill=F, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 0.2, color = "black", label=~NAME, popup = ~paste(HECTARES, "Hectares")) %>%
   addPolygons(data=west_bord, fill=F, fillOpacity = 0.3, opacity = 1, fillColor = "white", weight = 1, color = "black") %>%
-  addCircles(data=cp, weight=0, radius=~ifelse(Provider=="ESB", 25, 15), fillOpacity = 1, fillColor = ~colour, group=~ChargeType, label=~Provider, popup=~labs) %>%
-  addCircles(data=lccp, weight=0, radius=10, fillOpacity = 1, fillColor = "green", group="Lamp Column", label=~ChargepointID, popup=~labs) %>%
-  addCircles(data=future_lccp, weight=0, radius=10, fillOpacity = 0.5, fillColor = "green", group="Planned Lamp Column Charge Points", label="Confirmed Install", popup=~labs) %>%
+  addCircles(data=sd, weight=0, radius=~Radius, fillOpacity = ~Opacity, fillColor = ~Colour, group=~Group, label=~Provider, popup=~labs) %>%
+  #addCircles(data=lccp, weight=0, radius=10, fillOpacity = 1, fillColor = "green", group="Lamp Column", label=~ChargepointID, popup=~labs) %>%
+  #addCircles(data=future_lccp, weight=0, radius=10, fillOpacity = 0.5, fillColor = "green", group="Planned Lamp Column Charge Points", label="Confirmed Install", popup=~labs) %>%
   addReachability(apikey = "5b3ce3597851110001cf62484c75d3ed4e8f4fab81992f9f4d2b83e6",
                   options = reachabilityOptions(styleFn = list(fillOpacity=0.1, weight=1, fillColor="red"),
                                                 expandButtonContent='',
@@ -191,20 +127,20 @@ leaflet() %>%
                 return L.circleMarker(latLng, { radius: 2, weight: 1, color: 'black', fillColor: 'black', fillOpacity: 1 });
             }")
                                                 )) %>%
-  addLayersControl(overlayGroups = c("Lamp Column", "Dedicated", "Rapid", "Planned Lamp Column Charge Points"), options=layersControlOptions(collapsed = F), position = "bottomleft") %>%
-  addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple"), labels = c("Lamp Column Charge Points (5kW)", "Planned Lamp Column Charge Points", "Dedicated Fast Chargers (7-22kW)",  "Rapid Charge Points (50kW)"), sizes = c(15, 15, 20, 25)) %>%
+  addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple", "cyan"), labels = c("Lamp Column Charge Points (5kW)", "Planned Lamp Column Charge Points", "Dedicated Fast Chargers (7-22kW)",  "Rapid Charge Points (50kW)", "Planned Rapid Charge Points"), sizes = c(15, 15, 20, 25, 25)) %>%
   addLegend(position="bottomright", labels = c("Target: 1000",
-                                                   paste("Lamp Column Charge Points", sum(!is.na(future_lccp$Provider))), 
-                                                   paste("Rapids: ", 16)), 
-                                               values="d", colors = rep("black", 3), title="Planned Infrastructure:") %>%
-  addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", sum(!is.na(lccp$Provider))), 
-                                                   paste("Dedicated Charge Point Bays:", sum(cp$NoBays, na.rm = TRUE)),
-                                                   paste("Rapid Bays:", 5)), 
-                                               values="d", colors = rep("black", 3), title="Current Infrastructure:") %>%
+                                                   paste("Lamp Column Charge Points", lccp_pending), 
+                                                   paste("Rapids: ", rapid_pending)), 
+                                               values="d", colors = rep("black", 3), title="Pending Installation:") %>%
+  addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_existing), 
+                                                   paste("Dedicated Charge Point Bays:", ded_existing),
+                                                   paste("Rapid Bays:", rapid_existing)), 
+                                               values="d", colors = rep("black", 3), title="Installed:") %>%
   addSearchOSM() %>%
   addScaleBar(position="bottomleft")
 
- ```
+```
+
 
 
 ```{r}
@@ -215,81 +151,40 @@ ward_names <- sort(wards_polygon$NAME)
 
 
 ```{r}
-dedicated <- cp
-lccp <- lccp 
-
-dedicated$labs <- sapply(seq(nrow(dedicated)), function(i) {
-    paste0( '<p><strong>Location: </strong>', 
-            dedicated[i, "LocationName"],'</p><p><strong>Number of Bays: </strong>', 
-            dedicated[i, "NoBays"],'</p><p><strong>Provider: </strong>',
-            dedicated[i, "Provider"],'</p>') 
-})
-dedicated <- st_as_sf(dedicated, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
-lccp <- st_as_sf(lccp, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
-
-rapid_roll_out <- read.csv("../../../data/clean_data_files/usage_data/rapid_roll_out_locations.csv")
-rapid_roll_out <- st_as_sf(rapid_roll_out, coords = c("Longitude", "Latitude"), crs = "epsg:4326", remove=FALSE)
-
-#future_lccp <- read_excel("../../../analysis_requests/2020:08:18_SiemensDesktopReviewProgress/2020 - 09 - 15 - #LCCP Proposed installation Listing - Complete.xlsx")
-#future_lccp <- future_lccp %>% dplyr::filter(`WCC Comments` == "Progress to next phase of site survey")
-#future_lccp <- st_as_sf(future_lccp, coords = c("easting", "northing"), crs = 27700, remove=FALSE) %>% #st_transform(4326) 
-
-
-future_lccp <- future_lccp %>%
-  dplyr::filter(!is.na(Latitude)) %>%
-  st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)
-  
-
 requests_ward <- read.csv("../../../data/clean_data_files/requests/ward_summary.csv")
 
 plot_map <- function(ward){
   ward_polygon <- wards_polygon %>% dplyr::filter(NAME %in% ward) 
+
+  ward_points <- full_points %>%
+    dplyr::filter(Ward==ward)
   
-  lccp_ward <- st_join(lccp, wards_polygon, join=st_within) %>%
-    dplyr::filter(NAME %in% ward) %>%
-    mutate(lon = purrr::map_dbl(geometry, function(x) x[1])) %>%
-    mutate(lat = purrr::map_dbl(geometry, function(x) x[2]))
-  lccp_ward[nrow(lccp_ward)+1,] <- NA
-    
-  # Dedicated Bays
-  dedicated_ward <- st_join(dedicated, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
-    dplyr::filter(NAME %in% ward)
-  dedicated_ward[nrow(dedicated_ward)+1,] <- NA
-  
-  # Rapids Roll Out
-  rapid_roll_out_ward <- st_join(rapid_roll_out, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
-    dplyr::filter(NAME %in% ward)
-  round2 <- rapid_roll_out_ward %>% dplyr::filter(Round==2)
-  round2[nrow(round2)+1,] <- NA
-  round3 <- rapid_roll_out_ward %>% dplyr::filter(Round==3)
-  round3[nrow(round3)+1,] <- NA
-  
-  # Future LCCP
-  future_lccp_ward <- st_join(future_lccp, st_transform(wards_polygon, crs = "epsg:4326"), join=st_within) %>%
-    dplyr::filter(NAME %in% ward) %>%
-    mutate(lon = purrr::map_dbl(geometry, function(x) x[1])) %>%
-    mutate(lat = purrr::map_dbl(geometry, function(x) x[2]))
-  
-  future_lccp_ward[nrow(future_lccp_ward)+1,] <- NA
-  
-  # Requests
+  # Stats
   requests_ward <- requests_ward %>% filter(NAME == ward) %>% pull(n)
   
-  lccp_ward %>%
-    leaflet() %>%
+  lccp_pending <- nrow(dplyr::filter(ward_points, Provider=="Ubitricity" & Status == "Pending Installation"))
+  lccp_existing <- nrow(dplyr::filter(ward_points, Provider=="Ubitricity" & Status == "Installed"))
+  
+  rapid_pending <- nrow(dplyr::filter(ward_points, Provider=="ESB" & Status == "Pending Installation"))
+  rapid_existing <- nrow(dplyr::filter(ward_points, Provider=="ESB" & Status == "Installed"))
+  
+  ded_pending <- nrow(dplyr::filter(ward_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Pending Installation"))
+  ded_existing <- nrow(dplyr::filter(ward_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Installed"))
+  
+
+leaflet() %>%
     addProviderTiles(providers$CartoDB.Positron) %>%
     addPolygons(data=ward_polygon, fillOpacity = 0, weight = 1, color = "black", opacity = 1) %>%
-    addCircles(lat=~lat, lng = ~lon, stroke = FALSE, fillColor = "green", fillOpacity = 1, label=~ChargepointID, radius = 8, group = "Lamp Column Charge Points") %>%
-    addCircles(data=dedicated_ward, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "blue", fillOpacity = 1, label = ~LocationName, radius = 15, group = "Dedicated Charge Point Bays", popup=~labs) %>%
-    addCircles(data=future_lccp_ward, lng=~lon, lat=~lat, stroke = FALSE, fillColor = "green", fillOpacity = 0.5, label = ~str_to_title(ChargepointID), radius = 8, group = "2020 Roll Out - Lamp Column Charge Points") %>%
-    addCircles(data=round2, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 2") %>%
-    addCircles(data=round3, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 3") %>%
-    addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", sum(!is.na(lccp_ward$Provider))), 
-                                                 paste("Dedicated Charge Point Bays:", sum(dedicated_ward$NoBays, na.rm = TRUE)), 
+    addCircles(data=ward_points, stroke = FALSE, fillColor = ~Colour, fillOpacity = ~Opacity, label=~ChargepointID, radius = ~Radius, group = ~Group, popup=~labs) %>%
+    #addCircles(data=dedicated_ward, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "blue", fillOpacity = 1, label = ~LocationName, radius = 15, group = "Dedicated Charge Point Bays", popup=~labs) %>%
+    #addCircles(data=future_lccp_ward, lng=~lon, lat=~lat, stroke = FALSE, fillColor = "green", fillOpacity = 0.5, label = ~str_to_title(ChargepointID), radius = 8, group = "2020 Roll Out - Lamp Column Charge Points") %>%
+    #addCircles(data=round2, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 2") %>%
+    #addCircles(data=round3, lat=~Latitude, lng = ~Longitude, stroke = FALSE, fillColor = "cyan", fillOpacity = 1, label = ~Location, radius = 15, group = "Rapid Installations - Round 3") %>%
+    addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_existing), 
+                                                 paste("Dedicated Charge Point Bays:", ded_existing), 
                                                  paste("Requests:", requests_ward),
-                                                 paste("Lamp Columns in 2020 Roll Out:", sum(!is.na(future_lccp_ward$Provider))),
-                                                 paste("Planned Rapid Installations: Round 2:", nrow(rapid_roll_out_ward%>%dplyr::filter(Round==2))),
-                                                 paste("Planned Rapid Installations: Round 3:", nrow(rapid_roll_out_ward%>%dplyr::filter(Round==3)))), values="d", colors = rep("black", 6), title="Number of:") %>%
+                                                 paste("Lamp Columns in 2020 Roll Out:", lccp_pending),
+                                                 paste("Planned Rapid Installations:", rapid_pending)), values="d", colors = rep("black", 5), title="Number of:") %>%
     addLegendCustom(colors = c("green", "#7DBF7A", "blue", "cyan"), labels = c("Lamp Column Charge Points", "Planned Lamp Column Charge Points (Subject to Survey)", "Dedicated Charge Point Bays",  "Rapid Installations (Subject to Survey)"), sizes = c(15, 15, 20, 20)) %>%
     addLayersControl(overlayGroups = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points", "Rapid Installations - Round 2", "Rapid Installations - Round 3"),
       position="bottomleft", options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE))
