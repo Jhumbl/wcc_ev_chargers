@@ -65,6 +65,10 @@ filter_select("public", "Restrictions", sd, c("To be added..."))
 </details>
 </div>
 
+<br></br>
+<hr></hr>
+<br></br>
+
 Column {data-width=650}
 -----------------------------------------------------------------------
 
@@ -75,14 +79,16 @@ Column {data-width=650}
 # Totals and Summary Statistics
 # Installs
 
-lccp_pending <- nrow(dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Pending Installation"))
-lccp_existing <- nrow(dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Installed"))
+lccp_pending <- dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Pending Installation") %>% pull(NoBays) %>% sum()
+lccp_existing <- dplyr::filter(full_points, Provider=="Ubitricity" & Status == "Installed") %>% pull(NoBays) %>% sum()
 
 rapid_pending <- nrow(dplyr::filter(full_points, Provider=="ESB" & Status == "Pending Installation"))
-rapid_existing <- nrow(dplyr::filter(full_points, Provider=="ESB" & Status == "Installed"))
+rapid_existing <- dplyr::filter(full_points, Provider=="ESB" & Status == "Installed") %>% pull(NoBays) %>% sum()
 
-ded_pending <- nrow(dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Pending Installation"))
-ded_existing <- nrow(dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Installed"))
+ded_pending <- dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Pending Installation") %>% pull(NoBays) %>% sum()
+ded_existing <- dplyr::filter(full_points, !Provider %in% c("ESB", "Ubitricity") & Status == "Installed") %>% pull(NoBays) %>% sum()
+
+total_bays <- dplyr::filter(full_points, Status == "Installed") %>% pull(NoBays) %>% sum()
 
 ```
 
@@ -127,11 +133,12 @@ leaflet() %>%
                 return L.circleMarker(latLng, { radius: 2, weight: 1, color: 'black', fillColor: 'black', fillOpacity: 1 });
             }")
                                                 )) %>%
-  addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple", "cyan"), labels = c("Lamp Column Charge Points (5kW)", "Planned Lamp Column Charge Points", "Dedicated Fast Chargers (7-22kW)",  "Rapid Charge Points (50kW)", "Planned Rapid Charge Points"), sizes = c(15, 15, 20, 25, 25)) %>%
-  addLegend(position="bottomright", labels = c("Target: 1000",
-                                                   paste("Lamp Column Charge Points", lccp_pending), 
-                                                   paste("Rapids: ", rapid_pending)), 
-                                               values="d", colors = rep("black", 3), title="Pending Installation:") %>%
+  addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple", "cyan"), labels = c("Lamp Column Charge Point (5kW)", "Planned Lamp Column Charge Point", "Dedicated Fast Charger (7-22kW)",  "Rapid Charge Point (50kW)", "Planned Rapid Charge Point"), sizes = c(15, 15, 20, 25, 25)) %>%
+  addLegend(position="bottomright", labels = c("WCC - Charge Point Target: 1000", paste("Installed Bays:", total_bays), htmltools::HTML(paste('<label for="file">',round(total_bays*100/1000, 2) ,'% </label><progress id="file" value="',round(total_bays*100/1000, 2),'" max="100">',round(total_bays*100/1000, 2),'% </progress>', sep=""))), 
+                                               values="d", colors = rep("black", 3), title="Westminster Wide Summary:") %>%
+  addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_pending), 
+                                                   paste("Rapid Charge Points: ", rapid_pending)), 
+                                               values="d", colors = rep("black", 2), title="Pending Installation:") %>%
   addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_existing), 
                                                    paste("Dedicated Charge Point Bays:", ded_existing),
                                                    paste("Rapid Bays:", rapid_existing)), 

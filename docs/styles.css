@@ -52,6 +52,10 @@ div .chart-stage .chart-stage-flex {
     background-color: rgb(255 255 255);
 }
 
+.fa {
+  line-height: 1.45;
+}
+
 .openchargemapiframe {
   height:100%;
 }
@@ -74,5 +78,9 @@ body hr {
 
 .leaflet-popup-content p {
   margin: 18px 0px 7px 0px;
+}
+
+#file {
+  transform: translate(6px, 2px);
 }
 
