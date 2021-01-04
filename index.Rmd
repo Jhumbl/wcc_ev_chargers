@@ -108,7 +108,7 @@ leaflet() %>%
   addCircles(data=sd, weight=0, radius=~Radius, fillOpacity = ~Opacity, fillColor = ~Colour, group=~Group, label=~Provider, popup=~labs) %>%
   #addCircles(data=lccp, weight=0, radius=10, fillOpacity = 1, fillColor = "green", group="Lamp Column", label=~ChargepointID, popup=~labs) %>%
   #addCircles(data=future_lccp, weight=0, radius=10, fillOpacity = 0.5, fillColor = "green", group="Planned Lamp Column Charge Points", label="Confirmed Install", popup=~labs) %>%
-  addReachability(apikey = "5b3ce3597851110001cf62484c75d3ed4e8f4fab81992f9f4d2b83e6",
+  addReachability(apikey = "5b3ce3597851110001cf6248b97cbf2e9add4a2b953f36b5e27ddf4c",
                   options = reachabilityOptions(styleFn = list(fillOpacity=0.1, weight=1, fillColor="red"),
                                                 expandButtonContent='',
                                                 expandButtonStyleClass= 'reachability-control-expand-button fa fa-bullseye',
