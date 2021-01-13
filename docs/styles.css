@@ -84,3 +84,7 @@ body hr {
   transform: translate(6px, 2px);
   width: 160px;
 }
+
+.section .sidebar {
+  background-color: white;
+}
