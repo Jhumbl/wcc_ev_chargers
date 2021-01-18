@@ -192,9 +192,9 @@ leaflet() %>%
                                                  paste("Requests:", requests_ward),
                                                  paste("Lamp Columns in 2020 Roll Out:", lccp_pending),
                                                  paste("Planned Rapid Installations:", rapid_pending)), values="d", colors = rep("black", 5), title="Number of:") %>%
-    addLegendCustom(colors = c("green", "#7DBF7A", "blue", "cyan"), labels = c("Lamp Column Charge Points", "Planned Lamp Column Charge Points (Subject to Survey)", "Dedicated Charge Point Bays",  "Rapid Installations (Subject to Survey)"), sizes = c(15, 15, 20, 20)) %>%
-    addLayersControl(overlayGroups = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points", "Rapid Installations - Round 2", "Rapid Installations - Round 3"),
-      position="bottomleft", options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE))
+    addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple", "cyan"), labels = c("Lamp Column Charge Points", "Planned Lamp Column Charge Points", "Dedicated Charge Point Bays", "Rapid Charge Point",  "Rapid Installations"), sizes = c(15, 15, 20, 20, 20))# %>%
+    #addLayersControl(overlayGroups = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points", "Rapid Installations - Round 2", "Rapid Installations - Round 3"),
+      #position="bottomleft", options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE))
       
 }
 
