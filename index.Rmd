@@ -137,7 +137,7 @@ leaflet() %>%
   addLegend(position="bottomright", labels = c("WCC - Charge Point Target: 1000", paste("Installed Bays:", total_bays), htmltools::HTML(paste('<label for="file">',round(total_bays*100/1000, 2) ,'% </label><progress id="file" value="',round(total_bays*100/1000, 2),'" max="100">',round(total_bays*100/1000, 2),'% </progress>', sep=""))), 
                                                values="d", colors = rep("black", 3), title="Westminster Wide Summary:") %>%
   addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_pending), 
-                                                   paste("Rapid Charge Points: ", rapid_pending)), 
+                                                   paste("Rapid Charge Points: ", 17)), 
                                                values="d", colors = rep("black", 2), title="Pending Installation:") %>%
   addLegend(position="bottomright", labels = c(paste("Lamp Column Charge Points:", lccp_existing), 
                                                    paste("Dedicated Charge Point Bays:", ded_existing),
@@ -191,7 +191,7 @@ leaflet() %>%
                                                  paste("Dedicated Charge Point Bays:", ded_existing), 
                                                  paste("Requests:", requests_ward),
                                                  paste("Lamp Columns in 2020 Roll Out:", lccp_pending),
-                                                 paste("Planned Rapid Installations:", 17)), values="d", colors = rep("black", 5), title="Number of:") %>%
+                                                 paste("Planned Rapid Installations:", rapid_pending)), values="d", colors = rep("black", 5), title="Number of:") %>%
     addLegendCustom(colors = c("green", "#7DBF7A", "blue", "purple", "cyan"), labels = c("Lamp Column Charge Points", "Planned Lamp Column Charge Points", "Dedicated Charge Point Bays", "Rapid Charge Point",  "Rapid Installations"), sizes = c(15, 15, 20, 20, 20))# %>%
     #addLayersControl(overlayGroups = c("Lamp Column Charge Points", "Dedicated Charge Point Bays", "2020 Roll Out - Lamp Column Charge Points", "Rapid Installations - Round 2", "Rapid Installations - Round 3"),
       #position="bottomleft", options = layersControlOptions(collapsed = FALSE, autoZIndex = TRUE))
