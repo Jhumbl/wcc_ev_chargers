@@ -88,6 +88,25 @@ body hr {
   font-size: 12px;
 }
 
+.leaflet-tooltip {
+   overflow-wrap: break-word;
+   white-space: normal;
+   max-width: 500px;
+}
+
+.leaflet-tooltip table{
+  table-layout: fixed;
+  width: max-content;
+  max-width: 100%;
+}
+
+.leaflet-tooltip td, .leaflet-tooltip th{
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+
 @media (max-width: 767px) { 
   #map .section.level3.chart-wrapper:first-child {
     display: none;
