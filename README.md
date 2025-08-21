@@ -1,4 +1,4 @@
-# Westminster City Council - Electric Vehicle Charge Point Map
+# City of Westminster - Electric Vehicle Charge Point Map
 
 Map showing the latest distribution of EV charge points in Westminster.
 
